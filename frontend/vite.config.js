@@ -5,15 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    // Dev proxy — forwards /api calls to local backend during development
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:5000',
         changeOrigin: true,
-        secure: false,
-        router: (req) => {
-          // Fallback check if server port 5001 or 5000 is active
-          return 'http://localhost:5001';
-        }
+        secure: false
       }
     }
   }

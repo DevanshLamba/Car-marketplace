@@ -1,128 +1,71 @@
 const User = require('../models/User');
 const Car = require('../models/Car');
-const { isMongoConnected } = require('../config/db');
-const {
-  toggleWishlistStore,
-  getUserWishlistCarsStore
-} = require('../utils/inMemoryStore');
 
-// @desc    Get user wishlist
+// @desc    Get the logged-in user's wishlist
 // @route   GET /api/wishlist
 // @access  Private
 const getWishlist = async (req, res, next) => {
   try {
-    if (isMongoConnected()) {
-      const user = await User.findById(req.user._id).populate({
-        path: 'wishlist',
-        populate: { path: 'sellerId', select: 'name email' }
-      });
-      if (user) {
-        return res.json({
-          success: true,
-          count: user.wishlist.length,
-          data: user.wishlist
-        });
-      }
-    }
-
-    // In-Memory store fallback
-    const cars = getUserWishlistCarsStore(req.user._id);
-    res.json({
-      success: true,
-      count: cars.length,
-      data: cars
+    const user = await User.findById(req.user._id).populate({
+      path: 'wishlist',
+      populate: { path: 'sellerId', select: 'name email' }
     });
+
+    res.json({ success: true, count: user.wishlist.length, data: user.wishlist });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Toggle or add car to wishlist
+// @desc    Toggle a car in the wishlist (add or remove)
 // @route   POST /api/wishlist/:id
 // @access  Private
 const toggleWishlist = async (req, res, next) => {
   try {
     const carId = req.params.id;
 
-    if (isMongoConnected()) {
-      const car = await Car.findById(carId);
-      if (car) {
-        const user = await User.findById(req.user._id);
-        const isSaved = user.wishlist.includes(carId);
-
-        if (isSaved) {
-          user.wishlist = user.wishlist.filter((id) => id.toString() !== carId.toString());
-          await user.save();
-          return res.json({
-            success: true,
-            isWishlisted: false,
-            message: 'Removed from saved wishlist',
-            data: user.wishlist
-          });
-        } else {
-          user.wishlist.push(carId);
-          await user.save();
-          return res.json({
-            success: true,
-            isWishlisted: true,
-            message: 'Added to saved wishlist',
-            data: user.wishlist
-          });
-        }
-      }
+    const car = await Car.findById(carId);
+    if (!car) {
+      return res.status(404).json({ success: false, message: 'Car listing not found.' });
     }
 
-    // In-Memory store fallback
-    const result = toggleWishlistStore(req.user._id, carId);
-    if (!result) {
-      return res.status(404).json({ success: false, message: 'Car listing not found' });
+    const user = await User.findById(req.user._id);
+    const isSaved = user.wishlist.some(id => id.toString() === carId);
+
+    if (isSaved) {
+      user.wishlist = user.wishlist.filter(id => id.toString() !== carId);
+    } else {
+      user.wishlist.push(carId);
     }
+
+    await user.save();
 
     res.json({
       success: true,
-      isWishlisted: result.isWishlisted,
-      message: result.isWishlisted ? 'Added to saved wishlist' : 'Removed from saved wishlist',
-      data: result.wishlist
+      isWishlisted: !isSaved,
+      message: isSaved ? 'Removed from wishlist.' : 'Added to wishlist.',
+      data: user.wishlist
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Remove car from wishlist
+// @desc    Remove a car from the wishlist
 // @route   DELETE /api/wishlist/:id
 // @access  Private
 const removeFromWishlist = async (req, res, next) => {
   try {
     const carId = req.params.id;
+    const user = await User.findById(req.user._id);
 
-    if (isMongoConnected()) {
-      const user = await User.findById(req.user._id);
-      if (user) {
-        user.wishlist = user.wishlist.filter((id) => id.toString() !== carId.toString());
-        await user.save();
-        return res.json({
-          success: true,
-          message: 'Removed from wishlist',
-          data: user.wishlist
-        });
-      }
-    }
+    user.wishlist = user.wishlist.filter(id => id.toString() !== carId);
+    await user.save();
 
-    // In-Memory store fallback
-    const result = toggleWishlistStore(req.user._id, carId);
-    res.json({
-      success: true,
-      message: 'Removed from wishlist',
-      data: result ? result.wishlist : []
-    });
+    res.json({ success: true, message: 'Removed from wishlist.', data: user.wishlist });
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = {
-  getWishlist,
-  toggleWishlist,
-  removeFromWishlist
-};
+module.exports = { getWishlist, toggleWishlist, removeFromWishlist };

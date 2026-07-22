@@ -1,21 +1,21 @@
 const mongoose = require('mongoose');
 
-let isConnected = false;
-
 const connectDB = async () => {
+  const uri = process.env.MONGODB_URI;
+
+  if (!uri) {
+    console.error('FATAL ERROR: MONGODB_URI environment variable is not set.');
+    console.error('Set it in your .env file (development) or deployment environment variables (production).');
+    process.exit(1);
+  }
+
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/car_marketplace', {
-      serverSelectionTimeoutMS: 2000
-    });
-    isConnected = true;
+    const conn = await mongoose.connect(uri);
     console.log(`[MongoDB] Connected: ${conn.connection.host}`);
   } catch (error) {
-    isConnected = false;
-    console.warn(`[MongoDB Warning] Local MongoDB service is offline.`);
-    console.warn(`[Database Auto-Fallback] Activated In-Memory Demo Data Store. Demo logins (demo@carhub.com / password123) are 100% READY!`);
+    console.error(`[MongoDB] Connection failed: ${error.message}`);
+    process.exit(1);
   }
 };
 
-const isMongoConnected = () => isConnected;
-
-module.exports = { connectDB, isMongoConnected };
+module.exports = connectDB;
