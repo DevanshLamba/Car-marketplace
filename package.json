@@ -1,0 +1,15 @@
+{
+  "name": "autovault-car-marketplace",
+  "version": "1.0.0",
+  "description": "Full-Stack MERN Car Marketplace Application",
+  "main": "backend/server.js",
+  "scripts": {
+    "setup": "npm install --prefix backend && npm install --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "seed": "npm run seed --prefix backend",
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
